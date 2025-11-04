@@ -13,8 +13,9 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
+    // Use SQLite for production (change to UseSqlServer if you have Azure SQL Database)
     builder.Services.AddDbContext<MvcMovieContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("ProductionMvcMovieContext")));
+        options.UseSqlite(builder.Configuration.GetConnectionString("ProductionMvcMovieContext")));
 }
 
 // Add services to the container.
@@ -22,10 +23,22 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
+// Seed the database with error handling
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    SeedData.Initialize(services);
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        SeedData.Initialize(services);
+        logger.LogInformation("Database seeded successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while seeding the database");
+        // Don't fail the application startup if seeding fails
+    }
 }
 
 // Configure the HTTP request pipeline.
